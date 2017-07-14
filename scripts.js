@@ -6,6 +6,11 @@ $(function() {
     var apiurl = "https://search.mapzen.com/v1/autocomplete";
     var apiurl_reverse = "https://search.mapzen.com/v1/reverse";
     var marker;
+    // Pure function
+  function createMarker(p,M){
+    return  L.marker(p,{draggable: true}).addTo(M);;
+  }
+
 
     L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
         attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
@@ -32,9 +37,7 @@ $(function() {
                 marker.setLatLng(p);
             } else {
 
-                marker = L.marker(p, {
-
-                }).addTo(M);
+                marker = createMarker(p,M);
             }
             marker.bindPopup(res.features[0].properties.label + "<br />" + p).openPopup();
 
@@ -63,10 +66,8 @@ $(function() {
             if (marker) {
                 marker.setLatLng(p2);
             } else {
-                marker = L.marker(p2, {
-                    draggable: true,
 
-                }).addTo(M);
+              marker = createMarker(p2,M);
 
                 marker.on('moveend', function(moveend) {
 

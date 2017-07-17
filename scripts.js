@@ -7,6 +7,8 @@ var M = L.map('mapid').setView([40.645, -73.975], 12)
 var apikey = 'mapzen-bUdwtHy'
 var apiurl = 'https://search.mapzen.com/v1/autocomplete'
 var apiurlReverse = 'https://search.mapzen.com/v1/reverse'
+var forecastApiurl = 'https://api.darksky.net/forecast/'
+var forecastApikey = '9c4c46f1547235bf7052307be4bb9494'
 var marker
 L.Mapzen.apiKey = 'mapzen-bUdwtHy'
 
@@ -86,11 +88,18 @@ function displayAddressData (res) {
   console.log('Click : ' + addressCoords)
   marker.bindPopup(res.features[0].properties.label + '<br />' + addressCoords[0] + ' , ' + addressCoords[1]).openPopup()
 };
+
+function displayForecastData (res) {
+  alert(res.currently.summary)
+};
 // parses the Address data so we can display it
 function gotAddressData (res, err) {
   res.json().then(displayAddressData)
 }
 
+function gotForecastData (res, err) {
+  res.json().then(displayForecastData)
+}
 // on the event of click if there is a marker avalible set
 M.on('click', function (click) {
   var clickLocation = click.latlng
@@ -110,6 +119,12 @@ M.on('click', function (click) {
   var clickUrl = `${apiurlReverse}?api_key=${apikey}&point.lat=${options.lat}&point.lon=${options.lng}`
 // uses URL then runs gotAddress function
   fetch(clickUrl).then(gotAddressData)
+
+  // constructs forecast URL
+  var searchForecastUrl = `${forecastApiurl}${forecastApikey}/${options.lat},${options.lng}`
+
+  fetch(searchForecastUrl, {mode: 'no-cors'})
+.then(gotForecastData)
 })
 /* end of click function */
 

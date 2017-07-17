@@ -1,108 +1,140 @@
-$(function() {
+//  Map & Api Stuff
+/* global L,fetch */
 
-    // Map & Api Stuff
-    var M = L.map('mapid').setView([40.645, -73.975], 8);
-    var apikey = "mapzen-bUdwtHy";
-    var apiurl = "https://search.mapzen.com/v1/autocomplete";
-    var apiurl_reverse = "https://search.mapzen.com/v1/reverse";
-    var marker;
-    // Pure function
-  function createMarker(p,M){
-    return  L.marker(p,{draggable: true}).addTo(M);;
+// centers at downtown brooklyn
+
+var M = L.map('mapid').setView([40.645, -73.975], 12)
+var apikey = 'mapzen-bUdwtHy'
+var apiurl = 'https://search.mapzen.com/v1/autocomplete'
+var apiurlReverse = 'https://search.mapzen.com/v1/reverse'
+var marker
+L.Mapzen.apiKey = 'mapzen-bUdwtHy'
+
+/* start mapzen plugin */
+// Disable autocomplete and set parameters for the search query
+var geocoderOptions = {
+  autocomplete: false,
+  params: {
+    sources: 'osm',
+    'boundary.country': 'USA',
+    layers: 'address,venue'
   }
-
-
-    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
-        attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
-        maxZoom: 18,
-        id: 'mapbox.streets',
-        accessToken: 'pk.eyJ1IjoiYmx1bnRlZG1pY2UiLCJhIjoiY2l6a2hqeHdvMDAxMzJ3cnY2czIyODE5aCJ9.fpYRJeHhMLu0KWDRHz2j-g'
-    }).addTo(M);
-
-
-
-    $("input").on('keyup', function(keyup) {
-        console.log(input.value);
-        $.get(apiurl, {
-            api_key: apikey,
-            text: input.value
-
-        }, function(res, err) {
-            console.log(res, err);
-            console.log(res.features[0].geometry.coordinates);
-            M.panTo(res.features[0].geometry.coordinates.reverse());
-            var p = res.features[0].geometry.coordinates;
-            console.log(p);
-            if (marker) {
-                marker.setLatLng(p);
-            } else {
-
-                marker = createMarker(p,M);
-            }
-            marker.bindPopup(res.features[0].properties.label + "<br />" + p).openPopup();
-
-        });
-
-
-
-
-    });
-
-
-
-
-    M.on('click', function(click) {
-        var p2 = click.latlng;
-
-        $.get(apiurl_reverse, {
-            api_key: apikey,
-            'point.lat': p2.lat,
-            'point.lon': p2.lng,
-
-
-        }, function(res, err) {
-
-
-            if (marker) {
-                marker.setLatLng(p2);
-            } else {
-
-              marker = createMarker(p2,M);
-
-                marker.on('moveend', function(moveend) {
-
-                    var Mv = moveend.target.getLatLng();
-
-                    $.get(apiurl_reverse, {
-                            api_key: apikey,
-                            'point.lat': Mv.lat,
-                            'point.lon': Mv.lng,
-
-
-                        },
-                          function(res,err){
-
-
-                            marker.bindPopup(res.features[0].properties.label + "<br />" + Mv.lat + " , " + Mv.lng).openPopup();
-
-                        });
-
-                });
-            }
-            marker.bindPopup(res.features[0].properties.label + "<br />" + p2.lat + " , " + p2.lng).openPopup();
-            console.log(res.features[0].properties.label);
-          if(res.features[0].properties === undefined){
-  marker.bindPopup("No Address").openPopup();
-
 }
 
-        });
+// Add the geocoder to the map, set parameters for geocoder options
+var geocoder = L.Mapzen.geocoder(geocoderOptions)
+geocoder.addTo(M)
+/* end mapzen plugin */
 
+// Pure function
 
+function createMarker (p, M) {
+  var newMarker = L.marker(p, { draggable: true }).addTo(M)
+  newMarker.on('moveend', moveEnd)
+  return newMarker
+};
 
+L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+  attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+  maxZoom: 18,
+  id: 'mapbox.streets',
+  accessToken: 'pk.eyJ1IjoiYmx1bnRlZG1pY2UiLCJhIjoiY2l6a2hqeHdvMDAxMzJ3cnY2czIyODE5aCJ9.fpYRJeHhMLu0KWDRHz2j-g'
+}).addTo(M)
 
-    });
+/* start of search function */
+// handles the res by reversing coords, panning to it, and marking it.
+function handleJSON (res) {
+  M.panTo(res.features[0].geometry.coordinates.reverse())
+  var p = res.features[0].geometry.coordinates
+  console.log(p)
+  if (marker) {
+    marker.setLatLng(p)
+  } else {
+    marker = createMarker(p, M)
+  }
+  marker.bindPopup(res.features[0].properties.label + '<br />' + p).openPopup()
+}
 
+// Parses the json for search results
+function searchAddress (res, err) {
+  res.json().then(handleJSON)
+}
 
+// looks for input box and listens for KeyUp then handles it
+document.querySelector('.leaflet-pelias-input').addEventListener('keyup', function (event) {
+  console.log('Address: ' + event.target.value)
 
-});
+// options for URL
+  var options = {
+    api_key: apikey,
+    text: event.target.value
+
+  }
+
+  // constructs search address URL
+  var searchUrl = `${apiurl}?api_key=${options.api_key}&text=${options.text}`
+  console.log(searchUrl)
+  fetch(searchUrl).then(searchAddress)
+})
+/* end of search function */
+
+/* start of click function */
+
+// reverse the coords and displays it on  a popup
+function displayAddressData (res) {
+  var addressCoords = res.features[0].geometry.coordinates.reverse()
+  console.log('Click : ' + addressCoords)
+  marker.bindPopup(res.features[0].properties.label + '<br />' + addressCoords[0] + ' , ' + addressCoords[1]).openPopup()
+};
+// parses the Address data so we can display it
+function gotAddressData (res, err) {
+  res.json().then(displayAddressData)
+}
+
+// on the event of click if there is a marker avalible set
+M.on('click', function (click) {
+  var clickLocation = click.latlng
+
+  if (marker) {
+    marker.setLatLng(clickLocation)
+  } else {
+    marker = createMarker(clickLocation, M)
+  }
+
+// Gets the points from clickLocation
+  var options = {
+    lat: clickLocation.lat,
+    lng: clickLocation.lng
+  }
+// constructs click URL function
+  var clickUrl = `${apiurlReverse}?api_key=${apikey}&point.lat=${options.lat}&point.lon=${options.lng}`
+// uses URL then runs gotAddress function
+  fetch(clickUrl).then(gotAddressData)
+})
+/* end of click function */
+
+/* beginning of moveend function */
+
+// runs the event of the moveEnd
+function moveEnd (event) {
+  // simply gets the coords of new moveEnd point
+  var targetCoords = event.target.getLatLng()
+  console.log('Move End' + targetCoords)
+
+  function gotAddress (res, err) {
+    // uses gotAddress then parses jSon
+    res.json().then(gotJson)
+
+   // gets the response and from the got address parsing and give it to  pop up
+    function gotJson (res) {
+      marker.bindPopup(res.features[0].properties.label + '<br />' + targetCoords.lat + ' , ' + targetCoords.lng).openPopup()
+    };
+  }
+
+  // constructs URL
+  var moveendUrl = `${apiurlReverse}?api_key=${apikey}&point.lat=${targetCoords.lat}&point.lon=${targetCoords.lng}`
+  // uses URL then runs gotAddress function
+  fetch(moveendUrl).then(gotAddress)
+}
+
+/* end of moveend function */
